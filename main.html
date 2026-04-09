@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Fiszki — Dom i mieszkanie</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f2f2f7; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+
+  .header { width: 100%; max-width: 430px; padding: 52px 20px 16px; }
+  .header h1 { font-size: 28px; font-weight: 700; color: #1c1c1e; }
+  .header p { font-size: 15px; color: #8e8e93; margin-top: 4px; }
+
+  .progress-bar-wrap { width: 100%; max-width: 430px; padding: 0 20px 12px; }
+  .progress-bar { height: 6px; background: #e5e5ea; border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; background: #34c759; border-radius: 3px; transition: width 0.4s ease; }
+
+  .counter { width: 100%; max-width: 430px; padding: 0 20px 20px; display: flex; gap: 12px; }
+  .counter-item { flex: 1; background: #fff; border-radius: 14px; padding: 12px; text-align: center; }
+  .counter-item .num { font-size: 22px; font-weight: 700; }
+  .counter-item .lbl { font-size: 11px; color: #8e8e93; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .cnt-total .num { color: #1c1c1e; }
+  .cnt-good .num { color: #34c759; }
+  .cnt-bad .num { color: #ff3b30; }
+
+  .card-area { width: 100%; max-width: 430px; padding: 0 20px; flex: 1; display: flex; flex-direction: column; align-items: center; }
+
+  .scene { width: 100%; perspective: 1000px; margin-bottom: 20px; }
+  .card { width: 100%; height: 220px; position: relative; transform-style: preserve-3d; transition: transform 0.5s ease; cursor: pointer; }
+  .card.flipped { transform: rotateY(180deg); }
+  .card-face { position: absolute; inset: 0; border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+  .card-front { background: #fff; }
+  .card-back { background: #1c1c1e; transform: rotateY(180deg); }
+  .card-hint { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #8e8e93; margin-bottom: 12px; }
+  .card-word { font-size: 26px; font-weight: 600; color: #1c1c1e; text-align: center; line-height: 1.3; }
+  .card-back .card-hint { color: #636366; }
+  .card-back .card-word { color: #fff; }
+
+  .tap-hint { font-size: 13px; color: #8e8e93; margin-bottom: 16px; }
+
+  .answer-btns { width: 100%; display: flex; gap: 12px; margin-bottom: 20px; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+  .answer-btns.visible { opacity: 1; pointer-events: all; }
+  .btn-bad, .btn-good { flex: 1; padding: 16px; border-radius: 14px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.1s; }
+  .btn-bad:active, .btn-good:active { transform: scale(0.97); }
+  .btn-bad { background: #ff3b30; color: #fff; }
+  .btn-good { background: #34c759; color: #fff; }
+
+  .summary { width: 100%; max-width: 430px; padding: 40px 20px; display: none; flex-direction: column; align-items: center; gap: 16px; }
+  .summary h2 { font-size: 26px; font-weight: 700; color: #1c1c1e; }
+  .summary-stats { display: flex; gap: 16px; width: 100%; }
+  .summary-stat { flex: 1; background: #fff; border-radius: 16px; padding: 16px; text-align: center; }
+  .summary-stat .big { font-size: 32px; font-weight: 700; }
+  .summary-stat .sm { font-size: 12px; color: #8e8e93; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+  .stat-good .big { color: #34c759; }
+  .stat-bad .big { color: #ff3b30; }
+
+  .btn-action { width: 100%; padding: 16px; border-radius: 14px; border: none; font-size: 17px; font-weight: 600; cursor: pointer; transition: transform 0.1s; }
+  .btn-action:active { transform: scale(0.98); }
+  .btn-retry { background: #ff3b30; color: #fff; }
+  .btn-restart { background: #007aff; color: #fff; }
+
+  .done-msg { font-size: 48px; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Fiszki</h1>
+  <p id="subtitle">Dom i mieszkanie</p>
+</div>
+
+<div class="progress-bar-wrap">
+  <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+</div>
+
+<div class="counter">
+  <div class="counter-item cnt-total"><div class="num" id="cnt-remaining">—</div><div class="lbl">Pozostało</div></div>
+  <div class="counter-item cnt-good"><div class="num" id="cnt-good">0</div><div class="lbl">Dobrze</div></div>
+  <div class="counter-item cnt-bad"><div class="num" id="cnt-bad">0</div><div class="lbl">Źle</div></div>
+</div>
+
+<div class="card-area" id="card-area">
+  <div class="scene">
+    <div class="card" id="card" onclick="flipCard()">
+      <div class="card-face card-front">
+        <div class="card-hint">po polsku</div>
+        <div class="card-word" id="word-pl">—</div>
+      </div>
+      <div class="card-face card-back">
+        <div class="card-hint">po angielsku</div>
+        <div class="card-word" id="word-en">—</div>
+      </div>
+    </div>
+  </div>
+  <div class="tap-hint" id="tap-hint">Dotknij karty, żeby zobaczyć tłumaczenie</div>
+  <div class="answer-btns" id="answer-btns">
+    <button class="btn-bad" onclick="answer(false)">Nie umiałem</button>
+    <button class="btn-good" onclick="answer(true)">Umiałem!</button>
+  </div>
+</div>
+
+<div class="summary" id="summary">
+  <div class="done-msg">🎉</div>
+  <h2 id="summary-title">Koniec rundy!</h2>
+  <div class="summary-stats">
+    <div class="summary-stat stat-good"><div class="big" id="sum-good">0</div><div class="sm">Dobrze</div></div>
+    <div class="summary-stat stat-bad"><div class="big" id="sum-bad">0</div><div class="sm">Źle</div></div>
+  </div>
+  <button class="btn-action btn-retry" id="btn-retry" onclick="retryWrong()" style="display:none">Powtórz źle odpowiedziane</button>
+  <button class="btn-action btn-restart" onclick="restart()">Zacznij od nowa (losowo)</button>
+</div>
+
+<script>
+const ALL_WORDS = [
+  ["blok mieszkalny","block of flats"],["dom parterowy","bungalow"],["chata / domek","cabin"],["domek wiejski","cottage"],["wolnostojący dom jednorodzinny","detached house"],["dom rodzinny","family home"],["dom w gospodarstwie rolnym","farmhouse"],["osiedle mieszkaniowe","housing estate"],["pałac / rezydencja","mansion"],["dom spokojnej starości","nursing home"],["bliźniak","semi-detached house"],["wieżowiec","skyscraper / tower block"],["kawalerka","studio flat"],["dom szeregowy / segment","terraced house"],["w przystępnej cenie","affordable"],["wszystkie wygody","all mod cons"],["kawalerka do wynajęcia","bedsit"],["osiedle zamknięte","gated community"],["przyczepa mieszkalna","mobile home"],["mieszkania dla osób wymagających opieki","sheltered accommodation"],["po drugiej stronie ulicy","across the road from"],["centralne położenie","central location"],["dojeżdżać do pracy","commute"],["dzielnica","district"],["w wiejskiej okolicy","in a rural area"],["na wsi","in the countryside"],["na odludziu","in the middle of nowhere"],["na przedmieściach","in the suburbs"],["mieszkaniec / mieszkanka","inhabitant"],["położony","located"],["sąsiad / sąsiadka","neighbour"],["sąsiedztwo / okolica","neighbourhood"],["Stare Miasto","Old Town"],["na skraju czegoś","on the edge of"],["wychodzić na / mieć widok na","overlook"],["transport publiczny","public transport"],["mieszkańcy","residents"],["wioska","village"],["rzut kamieniem od","a stone's throw from"],["udogodnienia","amenities"],["hałas i zgiełk","hustle and bustle"],["na głębokiej wsi","in the heart of the countryside"],["dróżka","lane"],["liściasty / zielony","leafy"],["na uboczu","off the beaten track"],["w bliskiej odległości pieszo","within walking distance of"],["strych / poddasze","attic"],["piwnica","basement / cellar"],["wiata na samochód","carport"],["sufit","ceiling"],["komin","chimney"],["na dole / na parterze","downstairs"],["podjazd","driveway"],["ogrodzenie / płot","fence"],["kominek","fireplace"],["drzwi frontowe / tylne","front / back door"],["brama","gate"],["żywopłot","hedge"],["parter","ground floor"],["domowa pralnia","laundry room"],["trawnik","lawn"],["winda","lift"],["salon","living room / lounge"],["strych","loft"],["ganek","porch"],["dach","roof"],["szopa","shed"],["klatka schodowa","staircase"],["schodki","steps"],["gabinet","study"],["na górze / na piętrze","upstairs"],["dziedziniec / podwórze","yard"],["przybudówka","extension"],["półpiętro","landing"],["spiżarnia","larder"],["pomieszczenie gospodarcze","utility room"],["garderoba","walk-in closet / wardrobe"],["przestronny","airy / spacious"],["źle wykończony","badly-decorated"],["jasny","bright"],["zagracony","cluttered"],["przerobić / przekształcić","convert"],["przytulny","cosy"],["zakurzony","dusty"],["przyjazny dla środowiska","eco-friendly"],["umeblowany / nieumeblowany","furnished / unfurnished"],["przytulny / jak w domu","homely"],["luksusowy","luxurious"],["utrzymywać / konserwować","maintain"],["staromodny","old-fashioned"],["bez ścian działowych","open-plan"],["używany / z drugiej ręki","second-hand"],["stalowy","steel"],["kamienny","stone"],["posprzątany / nieposprzątany","tidy / untidy"],["drewniany","wooden"],["zabytkowy / staroświecki","antique"],["ciasny","cramped"],["obskurny","dingy"],["zniszczony / walący się","dilapidated"],["do remontu","in need of renovation"],["dębowy","oak"],["duszny","stuffy"],["osobliwy","quaint"],["o unikalnym wyglądzie","unique-looking"],["w budowie","under construction"],["dobrze utrzymany / zadbany","well-maintained"],["klimatyzacja","air conditioning"],["budzik","alarm clock"],["dywanik łazienkowy","bath mat"],["stolik nocny","bedside table"],["koc","blanket"],["rolety","blinds"],["dywan","carpet"],["centralne ogrzewanie","central heating"],["komoda","chest of drawers"],["ekspres do kawy","coffee maker"],["kuchenka","cooker"],["szafka kuchenna","cupboard"],["zasłony / firanki","curtains / net curtains"],["poduszka dekoracyjna","cushion"],["zmywarka","dishwasher"],["wycieraczka","doormat"],["podwójne łóżko","double bed"],["kołdra","duvet"],["czajnik elektryczny","electric kettle"],["wyspa kuchenna","kitchen island"],["oświetlenie","lighting"],["kuchenka mikrofalowa","microwave"],["piekarnik","oven"],["poduszka","pillow"],["roślina doniczkowa","potted plant"],["dywanik","rug"],["prześcieradło","sheet"],["półka","shelf"],["pojedyncze łóżko","single bed"],["toster","toaster"],["toaleta / sedes","toilet"],["wieszak na ręczniki","towel rail"],["telewizor","TV set"],["tapeta","wallpaper"],["umywalka","washbasin"],["pralka","washing machine"],["goła podłoga","bare floor"],["narzuta na łóżko","bedspread"],["pościel","bedding"],["alarm antywłamaniowy","burglar alarm"],["łóżko piętrowe","bunk bed"],["blat kuchenny","countertop"],["suszarka do naczyń","dish drainer"],["okno z podwójną szybą","double-glazed window"],["oczko wodne","fish pond"],["wykładzina dywanowa","fitted carpet"],["deski podłogowe","floorboards"],["kafelki podłogowe","floor tiles"],["klomb","flowerbed"],["miska na owoce","fruit bowl"],["system grzewczy","heating system"],["przybory kuchenne","kitchen utensils"],["półka nad kominkiem","mantelpiece"],["ozdoba","ornament"],["krzesło biurowe","office chair"],["kaloryfer","radiator"],["okiennice","shutters"],["alarm przeciwpożarowy","smoke alarm"],["panele słoneczne","solar panels"],["poręcz przy schodach","stair rail"],["stołek / taboret","stool"],["parapet okienny","windowsill"],["zmieniać pościel","change the sheets"],["robić zakupy spożywcze","do the grocery shopping"],["robić pranie","do the laundry"],["zajmować się domem","do the housework"],["wycierać kurz z mebli","dust the furniture"],["opróżniać zmywarkę","empty the dishwasher"],["opróżniać kosz na śmieci","empty the rubbish bin"],["pozbywać się niepotrzebnych rzeczy","have a clear-out"],["mieć dobrą rękę do roślin","have green fingers"],["odkurzać dywan","hoover the carpet"],["prasować ubrania","iron the clothes"],["utrzymywać w nienagannym porządku","keep neat and tidy"],["wprowadzać ulepszenia","make improvements"],["ścielić łóżko","make the bed"],["wycierać podłogę mopem","mop the floor"],["kosić trawnik","mow the lawn"],["odnowić korytarz","renovate a corridor"],["zamiatać podłogę","sweep the floor"],["naprawić cieknący kran","mend a dripping tap"],["zakwaterowanie","accommodation"],["agent nieruchomości","estate agent"],["współlokator","flatmate / housemate / roommate"],["właściciel / właścicielka","landlord / landlady"],["mieszkać samemu","live on one's own"],["przeprowadzić się","move house"],["wprowadzić się / wyprowadzić się","move in / move out"],["zapłacić z góry","pay in advance"],["wynająć / czynsz","rent"],["dzielić z kimś pokój lub mieszkanie","share a room / flat / house"],["do wynajęcia","to let"],["parapetówka","housewarming party"],["wziąć kredyt hipoteczny","take out a mortgage"],["lokator / lokatorka","tenant"],["plac budowy","building site"],["klasyczny","classical"],["beton / betonowy","concrete"],["zburzyć","demolish"],["opuszczony","derelict"],["fasada","exterior"],["znany / kultowy","iconic"],["wnętrze","interior"],["marmurowy","marble"],["modernistyczny","modernist"],["pozwolenie na budowę","planning permission"],["budynek historyczny","historic building"],["zburzyć / rozbierać","pull down"],["jedno-/wielopiętrowy","single-storey / multi-storey"],["sylwetka budynku na tle nieba","skyline"],["symetryczny","symmetrical"],["miejski","urban"],["obowiązek domowy","chore"],["czystość","cleanliness"],["nieskazitelnie czysty","spotless"],["łuk","arch"],["komnata","chamber"],["kopuła","dome"],["gmach","edifice"],["budynek charakterystyczny","landmark"],["grobowiec / mauzoleum","mausoleum"],["pomnik","monument"],["słup","post"],["świątynia","temple"],["kładka","walkway"],["skrzypiące schody","creaky stairs"],["zarośnięty ogród","overgrown garden"],["ogrzewanie podłogowe","underfloor heating"],["zatkany odpływ","blocked drain"],["pęknięty tynk","cracked plaster"],["nieszczelna rura","leaky pipe"],["podciągająca wilgoć","rising damp"],["przestrzeń do przechowywania","storage space"]
+];
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+let deck = [];
+let current = 0;
+let good = 0;
+let bad = 0;
+let wrong = [];
+let flipped = false;
+let total = 0;
+
+function init(words) {
+  deck = shuffle(words);
+  current = 0;
+  good = 0;
+  bad = 0;
+  wrong = [];
+  flipped = false;
+  total = deck.length;
+  document.getElementById('summary').style.display = 'none';
+  document.getElementById('card-area').style.display = 'flex';
+  updateCounters();
+  showCard();
+}
+
+function showCard() {
+  const card = document.getElementById('card');
+  card.classList.remove('flipped');
+  flipped = false;
+  document.getElementById('answer-btns').classList.remove('visible');
+  document.getElementById('tap-hint').style.display = 'block';
+  const w = deck[current];
+  document.getElementById('word-pl').textContent = w[0];
+  document.getElementById('word-en').textContent = w[1];
+  updateCounters();
+}
+
+function flipCard() {
+  if (flipped) return;
+  flipped = true;
+  document.getElementById('card').classList.add('flipped');
+  document.getElementById('answer-btns').classList.add('visible');
+  document.getElementById('tap-hint').style.display = 'none';
+}
+
+function answer(correct) {
+  if (correct) {
+    good++;
+  } else {
+    bad++;
+    wrong.push(deck[current]);
+  }
+  current++;
+  if (current >= deck.length) {
+    showSummary();
+  } else {
+    showCard();
+  }
+}
+
+function updateCounters() {
+  const remaining = deck.length - current;
+  document.getElementById('cnt-remaining').textContent = remaining;
+  document.getElementById('cnt-good').textContent = good;
+  document.getElementById('cnt-bad').textContent = bad;
+  const done = current;
+  const pct = total > 0 ? (done / total) * 100 : 0;
+  document.getElementById('progress-fill').style.width = pct + '%';
+}
+
+function showSummary() {
+  document.getElementById('card-area').style.display = 'none';
+  const s = document.getElementById('summary');
+  s.style.display = 'flex';
+  document.getElementById('sum-good').textContent = good;
+  document.getElementById('sum-bad').textContent = bad;
+  const retry = document.getElementById('btn-retry');
+  if (wrong.length > 0) {
+    retry.style.display = 'block';
+    retry.textContent = `Powtórz źle odpowiedziane (${wrong.length})`;
+    document.getElementById('summary-title').textContent = 'Koniec rundy!';
+    document.querySelector('.done-msg').textContent = bad > 0 ? '💪' : '🎉';
+  } else {
+    retry.style.display = 'none';
+    document.getElementById('summary-title').textContent = 'Wszystkie dobrze!';
+    document.querySelector('.done-msg').textContent = '🏆';
+  }
+  updateCounters();
+}
+
+function retryWrong() {
+  init(wrong);
+}
+
+function restart() {
+  init(ALL_WORDS);
+}
+
+init(ALL_WORDS);
+</script>
+</body>
+</html>
